@@ -1,4 +1,5 @@
 import Neuron
+import Network
 import PointClass
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,6 +25,8 @@ class2 = PointClass.Visualization(ax, "lightskyblue", defMeans, defSamples, defV
 class2.display_inputs(plt, 0.45)
 
 neuron = Neuron.Neuron(ax, x_lim, 1)
+
+network = Network.Network([2, 3, 2], ax, x_lim, 1)
 
 
 def heaviside_true_output():

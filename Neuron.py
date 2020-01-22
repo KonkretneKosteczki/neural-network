@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Neuron:
-    def __init__(self, ax, x_lim, learning_rate=1):
+    def __init__(self, ax, x_lim, activation_function, activation_function_derivative, learning_rate=1):
         self.learningRate = learning_rate
         self.ax = ax
         self.x_lim = x_lim
@@ -10,6 +10,8 @@ class Neuron:
         self.weights = np.random.uniform(-1, 1, 3)
         self.plot, = ax.plot([], [])
         self.border = []
+        self.activation_function = activation_function
+        self.activation_function_derivative = activation_function_derivative
 
     def get_boundary(self):
         b = self.weights[0]
@@ -40,11 +42,18 @@ class Neuron:
                                  facecolor="lightskyblue" if self.weights[1] > 0 else "lightcoral")
         ]
 
+    @staticmethod
+    def add_bias(inputs):
+        return np.array([[-1, *single_input] for single_input in inputs])
+
+    def solve(self, activation_function, inputs_with_bias):
+        return activation_function(np.dot(inputs_with_bias, self.weights))
+
     def train(self, train_inputs, train_outputs, activation_function, activation_function_derivative, iterations=100):
-        inputs_with_bias = np.array([[-1, *train_input] for train_input in train_inputs])
+        inputs_with_bias = self.add_bias(train_inputs)
 
         for iteration in range(iterations):
-            output = activation_function(np.dot(inputs_with_bias, self.weights))
+            output = self.solve(activation_function, inputs_with_bias)
             error = train_outputs - output
             adjustment = self.learningRate / (iteration + 1) * np.dot(inputs_with_bias.T,
                                                                       error * activation_function_derivative(output))
