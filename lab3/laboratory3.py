@@ -1,8 +1,10 @@
-import Network
-import PointClass
+from lab3.PointClass import Visualization
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
+from lab3.neuralnet import NeuralNet
+from lab3.layers import Linear, Tanh
+from lab3.train import train as train_net
 
 # defaults
 defModes = 1
@@ -21,6 +23,11 @@ mesh = [
     ax.plot([x_lim[0]], [x_lim[1]], color="lightskyblue", marker=".", linewidth=0, alpha=0.3)[0]
 ]
 
+net = NeuralNet([
+        Linear(input_size=2, output_size=5),
+        Tanh(),
+        Linear(input_size=5, output_size=2)
+    ])
 
 def clear_mesh():
     x = [x_lim[0]]
@@ -31,31 +38,37 @@ def clear_mesh():
     mesh[1].set_xdata(x)
 
 
-class1 = PointClass.Visualization(ax, "lightcoral", defMeans, defSamples, defVariance, defModes)
+class1 = Visualization(ax, "lightcoral", defMeans, defSamples, defVariance, defModes)
 class1.display_inputs(plt, 0)
 
-class2 = PointClass.Visualization(ax, "lightskyblue", defMeans, defSamples, defVariance, defModes)
+class2 = Visualization(ax, "lightskyblue", defMeans, defSamples, defVariance, defModes)
 class2.display_inputs(plt, 0.45)
 
 
 def draw_mesh():
     xs = np.linspace(*x_lim)
     ys = np.linspace(*y_lim)
-    class1_x = [];
-    class1_y = [];
-    class2_x = [];
+    class1_x = []
+    class1_y = []
+    class2_x = []
     class2_y = []
-    mesh_coordinates = [[x, y] for x in xs for y in ys]
-    network_solutions = [network.solve(xy) for xy in mesh_coordinates]
-    # print(solutions)
-    for solution_index in range(len(network_solutions)):
-        solution = network_solutions[solution_index]
-        x, y = mesh_coordinates[solution_index]
+    mesh_coordinates = np.array([[x, y] for x in xs for y in ys])
+    network_solutions = np.array([net.forward(xy) for xy in mesh_coordinates])
 
-        if solution[0] > solution[1]:
+    print("network_solutions", network_solutions[0])
+    class1_solutions = network_solutions[:, 0:class1.modes]
+    class2_solutions = network_solutions[:, class1.modes:]
+
+    print("class1_solutions", class1_solutions[0])
+    print("class2_solutions", class2_solutions[0])
+
+    for solution_index in range(len(network_solutions)):
+        y, x = mesh_coordinates[solution_index]
+
+        if np.max(class1_solutions[solution_index]) < np.max(class2_solutions[solution_index]):
             class2_x.append(x)
             class2_y.append(y)
-        elif solution[0] < solution[1]:
+        else:
             class1_x.append(x)
             class1_y.append(y)
 
@@ -65,7 +78,7 @@ def draw_mesh():
     mesh[1].set_xdata(class2_x)
 
 
-def true_output():
+def get_targets():
     all_modes = class1.modes + class2.modes
     output = []
     for index in range(class1.modes):
@@ -80,27 +93,18 @@ def true_output():
         for i in range(class2.samples):
             output.append(out)
 
-    return output
-
-
-network = Network.Network([2, 3, 2], ax, x_lim, 1)
-
-
-# neuron = Neuron.Neuron(ax, x_lim, Neuron.Neuron.heaviside_step, 1)
+    return np.array(output)
 
 
 def train(_):
     clear_mesh()
-    # neuron.weights = np.random.uniform(0, 1, 3)
-    # neuron.train(
-    #     np.concatenate((class1.points, class2.points), axis=0),
-    #     true_output(), neuron.heaviside_step, neuron.heaviside_step_derivative,
-    #     iterations=400
-    # )
-    network.train_network(
-        np.concatenate((class1.points, class2.points), axis=0),
-        true_output()
-    )
+    output_size = class1.modes + class2.modes
+    net.update([
+        Linear(input_size=2, output_size=5),
+        Tanh(),
+        Linear(input_size=5, output_size=output_size)
+    ])
+    train_net(net, np.concatenate((class1.points, class2.points), axis=0), get_targets())
     draw_mesh()
     plt.draw()
 
@@ -108,7 +112,6 @@ def train(_):
 def draw(_):
     class1.draw()
     class2.draw()
-    # neuron.clear()
     clear_mesh()
     plt.draw()
 

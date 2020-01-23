@@ -14,7 +14,7 @@ class Network(object):
             number_of_neurons = layers[layer_index]
             inputs_number = 2
             if layer_index > 0:
-                inputs_number = layers[layer_index-1]
+                inputs_number = layers[layer_index - 1]
 
             for neuron in range(number_of_neurons):
                 self.layers[-1].append(
@@ -59,7 +59,7 @@ class Network(object):
             adjustments.append([])
             layer = reverse_layers_no_final[reverse_layer_index]
             layer_outputs = all_network_outputs[-2 - reverse_layer_index]
-            layer_inputs = all_network_outputs[-3-reverse_layer_index]
+            layer_inputs = all_network_outputs[-3 - reverse_layer_index]
             layer_errors = np.array(previous_layer_errors)
             previous_layer_errors = []
             for neuron_index in range(len(layer)):
