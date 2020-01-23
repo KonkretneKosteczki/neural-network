@@ -2,26 +2,17 @@ import numpy as np
 
 
 class Neuron:
-    def __init__(self, ax, x_lim, activation_function, activation_function_derivative, learning_rate=1):
+    def __init__(self, ax, x_lim, activation_function, activation_function_derivative, inputs_number=2, learning_rate=1):
         self.learningRate = learning_rate
         self.ax = ax
         self.x_lim = x_lim
 
-        self.weights = np.random.uniform(-1, 1, 3)
+        self.inputs_number = inputs_number
+        self.weights = np.random.uniform(-1, 1, inputs_number + 1)
         self.plot, = ax.plot([], [])
         self.border = []
         self.activation_function = activation_function
         self.activation_function_derivative = activation_function_derivative
-
-    def get_boundary(self):
-        b = self.weights[0]
-        w2 = self.weights[1]
-        w1 = self.weights[2]
-
-        x = np.linspace(self.x_lim[0], self.x_lim[1], 2)
-        y = (-(b / w2) / (b / w1)) * x + (-b / w2)
-
-        return x, y
 
     def clear(self):
         for border in self.border:
@@ -30,33 +21,21 @@ class Neuron:
         self.plot.set_ydata([])
         self.plot.set_xdata([])
 
-    def draw(self):
-        self.clear()
-        x, y = self.get_boundary()
-        self.plot.set_ydata(y)
-        self.plot.set_xdata(x)
-        self.border = [
-            self.ax.fill_between(x, y, self.x_lim[0], alpha=0.3,
-                                 facecolor="lightcoral" if self.weights[1] > 0 else "lightskyblue"),
-            self.ax.fill_between(x, y, self.x_lim[1], alpha=0.3,
-                                 facecolor="lightskyblue" if self.weights[1] > 0 else "lightcoral")
-        ]
-
     @staticmethod
     def add_bias(inputs):
         return np.array([[-1, *single_input] for single_input in inputs])
 
-    def solve(self, activation_function, inputs_with_bias):
-        return activation_function(np.dot(inputs_with_bias, self.weights))
+    def solve(self, inputs_with_bias):
+        return self.activation_function(np.dot(inputs_with_bias, self.weights))
 
-    def train(self, train_inputs, train_outputs, activation_function, activation_function_derivative, iterations=100):
+    def train(self, train_inputs, train_outputs, iterations=100):
         inputs_with_bias = self.add_bias(train_inputs)
 
         for iteration in range(iterations):
-            output = self.solve(activation_function, inputs_with_bias)
+            output = self.solve(inputs_with_bias)
             error = train_outputs - output
             adjustment = self.learningRate / (iteration + 1) * np.dot(inputs_with_bias.T,
-                                                                      error * activation_function_derivative(output))
+                                                                      error * self.activation_function_derivative(output))
             self.weights += adjustment
 
     @staticmethod

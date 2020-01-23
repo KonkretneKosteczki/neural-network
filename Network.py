@@ -6,11 +6,20 @@ class Network(object):
     def __init__(self, layers, ax, x_lim, learning_rate=1, iterations=100):
         # layers is an array of length equivalent to number of layers,
         # where values of it's elements are the number of neurons in a layer
-        self.layers = np.array(
-            [np.array([Neuron.Neuron(ax, x_lim, learning_rate) for x in range(number_of_neurons)]) for number_of_neurons
-             in layers])
+        self.layers = []
         self.iterations = iterations
         self.learning_rate = learning_rate
+        for layer_index in range(len(layers)):
+            self.layers.append([])
+            number_of_neurons = layers[layer_index]
+            inputs_number = 2
+            if layer_index > 0:
+                inputs_number = layers[layer_index-1]
+
+            for neuron in range(number_of_neurons):
+                self.layers[-1].append(
+                    Neuron.Neuron(ax, x_lim, Neuron.Neuron.tanh, Neuron.Neuron.tanh_derivative,
+                                  inputs_number, learning_rate))
 
     def solve(self, inputs):
         all_outputs = [inputs]
@@ -19,7 +28,7 @@ class Network(object):
         for layer in self.layers:
             this_layer_outputs = []
             for neuron in layer:
-                this_layer_outputs.append(neuron.solve(neuron.relu, neuron.add_bias(last_layer_outputs)))
+                this_layer_outputs.append(neuron.solve(neuron.add_bias([last_layer_outputs]))[0])
             last_layer_outputs = this_layer_outputs
             all_outputs.append(this_layer_outputs)
 
@@ -38,26 +47,29 @@ class Network(object):
         for neuron_index in range(len(final_layer)):
             neuron = final_layer[neuron_index]
             error = train_outputs[neuron_index] - final_layer_outputs[neuron_index]
-            a = error * neuron.activation_function_derivative(final_layer_outputs[neuron_index])
-            previous_layer_errors.append(a * neuron.weights)
-            layer_adjustment = learning_rate * np.dot(neuron.add_bias(all_network_outputs[-2]).T, a)
+            a = neuron.activation_function_derivative([final_layer_outputs[neuron_index]])[0] * error
+            previous_layer_errors.append(neuron.weights * a)
+            layer_adjustment = (learning_rate * np.dot(neuron.add_bias([all_network_outputs[-2]]), a))[0]
             adjustments[-1].append(layer_adjustment)
 
         # back-propagation
         reverse_layers_no_final = self.layers[:-1][::-1]  # skip final layer, reverse order
+        reverse_outputs_no_final = all_network_outputs[:-1][::-1]
         for reverse_layer_index in range(len(reverse_layers_no_final)):
             adjustments.append([])
             layer = reverse_layers_no_final[reverse_layer_index]
-            layer_outputs = all_network_outputs[-1 - reverse_layer_index]
-            layer_errors = previous_layer_errors
+            layer_outputs = all_network_outputs[-2 - reverse_layer_index]
+            layer_inputs = all_network_outputs[-3-reverse_layer_index]
+            layer_errors = np.array(previous_layer_errors)
             previous_layer_errors = []
             for neuron_index in range(len(layer)):
                 neuron = layer[neuron_index]
                 error = sum(layer_errors[:, neuron_index])
-                a = error * neuron.activation_function_derivative(layer_outputs[neuron_index])
-                previous_layer_errors.append(a * neuron.weights)
+
+                a = neuron.activation_function_derivative([layer_outputs[neuron_index]])[0] * error
+                previous_layer_errors.append(neuron.weights * a)
                 # possibly add bias dunno
-                layer_adjustment = learning_rate * np.dot(neuron.add_bias(all_network_outputs[-2 - reverse_layer_index]), a)
+                layer_adjustment = (learning_rate * np.dot(neuron.add_bias([layer_inputs]), a))[0]
                 adjustments[-1].append(layer_adjustment)
 
         # apply adjustments
@@ -74,3 +86,4 @@ class Network(object):
         for iteration in range(self.iterations):
             for input_index in range(len(all_train_inputs)):
                 self.train_once(all_train_inputs[input_index], all_train_outputs[input_index], iteration)
+        print("trained")
