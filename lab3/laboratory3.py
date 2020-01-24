@@ -1,10 +1,13 @@
 from lab3.PointClass import Visualization
 import numpy as np
+import json
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 from lab3.neuralnet import NeuralNet
-from lab3.layers import Linear, Tanh
-from lab3.train import train as train_net
+from lab3.neuron import Linear
+from lab3.activation import Tanh, Sigmoid, HeavisideStep,Relu, Sinus, LeakyRelu
+from typing import Dict, Callable
+from matplotlib.widgets import TextBox
 
 # defaults
 defModes = 1
@@ -14,7 +17,18 @@ defSamples = 10
 x_lim = (-10, 10)
 y_lim = (-10, 10)
 
+initial_layers_description = "[[\"Tanh\", 10], [\"Sigm\", 10], [\"Tanh\"]]"
+activation_functions = {
+    "Tanh": Tanh,
+    "Sigm": Sigmoid,
+    "Heav": HeavisideStep,
+    "Relu": Relu,
+    "Sin": Sinus,
+    "Lrel": LeakyRelu
+}
+
 # init
+net = NeuralNet([])
 fig, ax = plt.subplots()
 ax.set(xlim=x_lim, ylim=y_lim)
 plt.subplots_adjust(bottom=0.25)
@@ -23,11 +37,6 @@ mesh = [
     ax.plot([x_lim[0]], [x_lim[1]], color="lightskyblue", marker=".", linewidth=0, alpha=0.3)[0]
 ]
 
-net = NeuralNet([
-        Linear(input_size=2, output_size=5),
-        Tanh(),
-        Linear(input_size=5, output_size=2)
-    ])
 
 def clear_mesh():
     x = [x_lim[0]]
@@ -96,15 +105,30 @@ def get_targets():
     return np.array(output)
 
 
+def update_layers(str_layers_description):
+    output_size = class1.modes + class2.modes
+    layers_description = json.loads(str_layers_description)
+    inputs = 2
+    layers = []
+    for function, neurons in layers_description[:-1]:
+        layers.append(Linear(input_size=inputs, neurons_nr=neurons))
+        layers.append(activation_functions[function]())
+        inputs = neurons
+
+    layers.append(Linear(input_size=inputs, neurons_nr=output_size))
+    layers.append(activation_functions[layers_description[-1][0]]())
+
+    net.update(layers)
+
+
+# noinspection PyTypeChecker
+text_box = TextBox(plt.axes([0.4, 0.9, 0.5, 0.05]), "layers", initial=initial_layers_description)
+
+
 def train(_):
     clear_mesh()
-    output_size = class1.modes + class2.modes
-    net.update([
-        Linear(input_size=2, output_size=5),
-        Tanh(),
-        Linear(input_size=5, output_size=output_size)
-    ])
-    train_net(net, np.concatenate((class1.points, class2.points), axis=0), get_targets())
+    update_layers(text_box.text)
+    net.train(np.concatenate((class1.points, class2.points), axis=0), get_targets(), iterations=100)
     draw_mesh()
     plt.draw()
 
@@ -117,11 +141,11 @@ def draw(_):
 
 
 # noinspection PyTypeChecker
-buttonT = Button(plt.axes((0, 1 - 0.075, 0.1, 0.075)), "train")
+buttonT = Button(plt.axes((0.125, 0.9, 0.1, 0.05)), "train")
 buttonT.on_clicked(train)
 
 # noinspection PyTypeChecker
-buttonD = Button(plt.axes((0.1, 1 - 0.075, 0.1, 0.075)), "draw")
+buttonD = Button(plt.axes((0.225, 0.9, 0.1, 0.05)), "draw")
 buttonD.on_clicked(draw)
 
 plt.show()
